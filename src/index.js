@@ -20,15 +20,68 @@ movies = _
       year
     };
   })
-  .filter(d => d.boxOffice)
+  .filter(d => d.boxOffice && d.year >= 2007)
   .value();
-console.log(movies);
+const medianBox = d3.median(movies, d => d.boxOffice);
+
+// subtract median box from each movie
+movies = _
+  .chain(movies)
+  .map(d => Object.assign(d, { boxDiff: d.boxOffice - medianBox }))
+  .sortBy(d => -Math.abs(d.boxDiff))
+  .value();
+console.log(movies, medianBox);
 
 // process
 const width = 1200;
-const height = 700;
+const height = 480;
+const margin = { top: 20, right: 20, bottom: 20, left: 20 };
 const svg = d3
   .select("#app")
   .append("svg")
   .attr("width", width)
   .attr("height", height);
+
+// scales
+const [xMin, xMax] = d3.extent(movies, d => d.date);
+const xScale = d3
+  .scaleTime()
+  .domain([d3.timeYear(xMin), d3.timeYear.ceil(xMax)])
+  .range([margin.left, width - margin.right]);
+const yExtent = d3.extent(movies, d => d.boxDiff);
+const yScale = d3
+  .scaleLinear()
+  .domain(yExtent)
+  .range([height - margin.bottom, margin.top]);
+// area generater
+const areaGen = d3
+  .area()
+  .x(d => xScale(d.date))
+  .y1(d => yScale(d.val))
+  .y0(yScale(0))
+  .curve(d3.curveCatmullRom);
+
+// draw paths
+const paths = svg
+  .append("g")
+  .classed("curves", true)
+  .selectAll("path")
+  .data(movies)
+  .enter()
+  .append("path")
+  .attr("d", d =>
+    areaGen([
+      { date: d3.timeMonth.offset(d.date, -2), val: 0 },
+      { date: d.date, val: d.boxDiff },
+      { date: d3.timeMonth.offset(d.date, 2), val: 0 }
+    ])
+  )
+  .attr("stroke", "#fff");
+
+// draw axis
+const xAxis = d3.axisBottom().scale(xScale);
+svg
+  .append("g")
+  .classed("x-axis", true)
+  .attr("transform", `translate(0, ${yScale(0)})`)
+  .call(xAxis);
