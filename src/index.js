@@ -1,7 +1,10 @@
 import * as d3 from "d3";
 import _ from "lodash";
 import inflation from "us-inflation";
+import textures from "textures";
 
+const startYear = 2012;
+const numYears = 6;
 // load movies data
 let movies = require("./movies.json");
 
@@ -20,7 +23,7 @@ movies = _
       year
     };
   })
-  .filter(d => d.boxOffice && d.year > 2007)
+  .filter(d => d.boxOffice && d.year >= startYear)
   .value();
 const meanBox = d3.mean(movies, d => d.boxOffice);
 const genres = _
@@ -106,18 +109,61 @@ svg
 
 const yAxis = d3
   .axisLeft()
-  // .tickSize(-(width - margin.left - margin.right))
   .tickFormat(
     d => (d % 100000000 === 0 ? `$${parseInt((d + meanBox) / 1000000)}M` : "")
   )
   .scale(yScale);
 const yAxisG = svg
-  .insert("g", ".curves")
+  .append("g")
   .classed("y-axis", true)
   .attr("transform", `translate(${margin.left}, 0)`)
   .call(yAxis);
 yAxisG.select(".domain").remove();
-// yAxisG
-//   .selectAll(".tick line")
-//   .attr("stroke", "#999")
-//   .attr("stroke-dasharray", "2");
+
+// calculate summer and winter holidays
+const holidayData = _
+  .chain(numYears)
+  .times(i => {
+    return [
+      {
+        type: "summer",
+        dates: [
+          new Date(`6/1/${startYear + i}`),
+          new Date(`8/30/${startYear + i}`)
+        ]
+      },
+      {
+        type: "winter",
+        dates: [
+          new Date(`11/1/${startYear + i}`),
+          new Date(`12/31/${startYear + i}`)
+        ]
+      }
+    ];
+  })
+  .flatten()
+  .value();
+// and draw them as textures
+const summer = textures
+  .lines()
+  .lighter()
+  .size(8)
+  .stroke("#f19b6f");
+const winter = textures
+  .lines()
+  .lighter()
+  .size(8)
+  .stroke("#51aae8");
+svg.call(summer);
+svg.call(winter);
+const holidays = svg.insert("g", ".curves");
+holidays
+  .selectAll(".summer")
+  .data(holidayData)
+  .enter()
+  .append("rect")
+  .attr("x", d => xScale(d.dates[0]))
+  .attr("y", margin.top)
+  .attr("width", d => xScale(d.dates[1]) - xScale(d.dates[0]))
+  .attr("height", height - margin.top - margin.bottom)
+  .attr("fill", d => (d.type === "summer" ? summer.url() : winter.url()));
