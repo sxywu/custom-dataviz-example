@@ -44,7 +44,7 @@ movies = _
 // draw
 const width = 1200;
 const height = 300;
-const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+const margin = { top: 20, right: 20, bottom: 20, left: 40 };
 const svg = d3
   .select("#app")
   .append("svg")
@@ -94,9 +94,30 @@ const paths = svg
   .attr("stroke", "#fff");
 
 // draw axis
-const xAxis = d3.axisBottom().scale(xScale);
+const xAxis = d3
+  .axisBottom()
+  .tickSizeOuter(0)
+  .scale(xScale);
 svg
   .append("g")
   .classed("x-axis", true)
   .attr("transform", `translate(0, ${yScale(0)})`)
   .call(xAxis);
+
+const yAxis = d3
+  .axisLeft()
+  // .tickSize(-(width - margin.left - margin.right))
+  .tickFormat(
+    d => (d % 100000000 === 0 ? `$${parseInt((d + meanBox) / 1000000)}M` : "")
+  )
+  .scale(yScale);
+const yAxisG = svg
+  .insert("g", ".curves")
+  .classed("y-axis", true)
+  .attr("transform", `translate(${margin.left}, 0)`)
+  .call(yAxis);
+yAxisG.select(".domain").remove();
+// yAxisG
+//   .selectAll(".tick line")
+//   .attr("stroke", "#999")
+//   .attr("stroke-dasharray", "2");
