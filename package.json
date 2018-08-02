@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "d3": "5.5.0",
+    "d3-svg-annotation": "2.3.0",
+    "d3-svg-legend": "2.25.6",
     "lodash": "4.17.10",
     "textures": "1.2.0",
     "us-inflation": "1.1.0"
