@@ -244,7 +244,7 @@ holidays
 /*******************************************
  * Draw legends
  *******************************************/
-// const legend = legendColor().scale(colorScale);
+const legend = legendColor().scale(colorScale);
 // const legendG = svg
 //   .append("g")
 //   .classed("legend", true)
