@@ -21,6 +21,8 @@ const svg = d3
   .attr("height", height)
   .style("overflow", "visible");
 
+// set up animation transition
+const t = d3.transition().duration(1500);
 /*******************************************
  * Process movie data
  *******************************************/
@@ -114,6 +116,18 @@ feMerge.append("feMergeNode").attr("in", "coloredBlur");
 feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
 /*******************************************
+ * Draw hover boxes
+ *******************************************/
+const hover = d3
+  .select("#app")
+  .append("div")
+  .style("position", "absolute")
+  .style("background", "#fff")
+  .style("padding", 5)
+  .style("max-width", "200px")
+  .style("border", "1px solid #000");
+
+/*******************************************
  * Draw movie curves
  *******************************************/
 const paths = svg
@@ -123,15 +137,33 @@ const paths = svg
   .data(movies)
   .enter()
   .append("path")
+  .style("fill", d => colorScale(d.genre))
+  .style("filter", "url(#shadow)");
+// for animating the curves up/down from mean
+paths
+  .attr("d", d =>
+    areaGen([
+      { date: d3.timeMonth.offset(d.date, -2), val: 0 },
+      { date: d.date, val: 0 },
+      { date: d3.timeMonth.offset(d.date, 2), val: 0 }
+    ])
+  )
+  .transition(t)
   .attr("d", d =>
     areaGen([
       { date: d3.timeMonth.offset(d.date, -2), val: 0 },
       { date: d.date, val: d.boxDiff },
       { date: d3.timeMonth.offset(d.date, 2), val: 0 }
     ])
-  )
-  .style("fill", d => colorScale(d.genre))
-  .style("filter", "url(#shadow)");
+  );
+// hover
+paths.on("mouseover", d => {
+  const [x, y] = d3.mouse(svg.node());
+  hover.style("top", `${y}px`).style("left", `${x}px`).html(`
+        <strong>${d.title}</strong><br />
+        Box office: ${d3.format("$,.0f")(d.boxOffice)}
+      `);
+});
 
 /*******************************************
  * Draw axes
@@ -212,24 +244,24 @@ holidays
 /*******************************************
  * Draw legends
  *******************************************/
-const legend = legendColor().scale(colorScale);
-const legendG = svg
-  .append("g")
-  .classed("legend", true)
-  .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
-  .call(legend);
-legendG
-  .selectAll("text")
-  .attr("font-size", 12)
-  .attr("font-family", "Helvetica")
-  .attr("fill", "#000");
+// const legend = legendColor().scale(colorScale);
+// const legendG = svg
+//   .append("g")
+//   .classed("legend", true)
+//   .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
+//   .call(legend);
+// legendG
+//   .selectAll("text")
+//   .attr("font-size", 12)
+//   .attr("font-family", "Helvetica")
+//   .attr("fill", "#000");
 
 /*******************************************
  * Draw annotations
  *******************************************/
 const annotationsData = _
   .chain(movies)
-  .filter(d => d.boxDiff > 200000000 || d.boxDiff < -150000000)
+  .filter(d => d.boxDiff > 150000000 || d.boxDiff < -150000000)
   .map(d => {
     return {
       note: { title: d.title, align: "middle", orientation: "leftRight" },
@@ -259,3 +291,12 @@ annotationG
   .attr("fill", "#fff")
   .attr("fill-opacity", 0.5)
   .attr("height", 14);
+
+// for animating annotations up with the curves
+annotationG
+  .selectAll(".annotation")
+  .attr("opacity", 0)
+  .attr("transform", d => `translate(${d.x}, ${yScale(0)})`)
+  .transition(t)
+  .attr("opacity", 1)
+  .attr("transform", d => `translate(${d.x}, ${d.y})`);
